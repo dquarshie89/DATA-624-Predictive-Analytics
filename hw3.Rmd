@@ -1,0 +1,24 @@
+---
+title: "Data 624 HW 3"
+author: "David Quarshie"
+date: "9/9/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r loadGlass}
+library('dplyr')
+library('DataExplorer')
+library('mlbench')
+data("Glass")
+```
+
+
+## Parts a & b
+The distributions of each predictor are shown below:
+```{r}
+plot_histogram(Glass)
+```
