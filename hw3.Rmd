@@ -10,15 +10,124 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r loadGlass}
-library('dplyr')
+library('corrplot')
 library('DataExplorer')
+library('car')
+library('caret')
+library('dplyr')
+library('tidyr')
+library('mice')
+library('VIM')
 library('mlbench')
 data("Glass")
 ```
 
+#3.1
+##Part a & b : Explore Variables and Identify Outliers / Skewness
+##Histogram of predictor variables:  
+```{r 3_1Histogram}
+par(mfrow = c(3, 3))
+for (i in 1:ncol(Glass[,1:9])) {
+  hist(Glass[ ,i], xlab = names(Glass[i]), main = names(Glass[i]))  
+}
+```  
 
-## Parts a & b
-The distributions of each predictor are shown below:
+Ploting histograms for each variable allows to examine their distributions. It looks like Ri, Na, Al, and Si have relatively normal distributions, while the others are skewed left or right. Ca, K, Ba, and Fe are right skewed while Mg is left skewed.  
+
+
+##Boxplot of predictor variables:  
+```{r 3_1Boxplot}
+par(mfrow = c(3, 3))
+for (i in 1:ncol(Glass[,1:9])) {
+  boxplot(Glass[,1:9][ ,i], ylab = names(Glass[,1:9][i]), horizontal=TRUE,
+          main = paste(names(Glass[i])))
+}
+```  
+
+The boxplots for each variable verify that Ri, Na, Al, and Si are normally distributed but they also show that mostly every variable contains outliers. Mg seems to be the only variable with no outliers.  
+
+
+##Correlation plot of predictor variables:  
+```{r 3_1Corrplot}
+# Feature Correlation plot
+corrplot(cor(Glass[,1:9]),method='color',tl.cex=.5, type = "upper",addCoef.col = "black")  
+```  
+
+In regards to the relationships between the variables, we can use a correlation plot to view which variable are closely correlatied and which are not. The plot shows that Ri and Ca have high positive relationship with a value of 0.81. Ri also has the highest negative relationship, show a value of -0.54 with Si. Most of the  variables seem to have little to no correlation to each other.  
+
+##Part c: Variable Transformation: Box-Cox  
+
+Given that we know that the variables skew certain ways and contain outliers we will want to do data transformations to produce a usable prediciton model. The Box-Cox transformation is used to see how we should transform each variable so that it can be normalized to be used in a model. Using the powerTransform function each variable will be given a power that it should be raised to in order to be normalized.   
+
+```{r 3_1BoxCox}
+summary(powerTransform(Glass[,1:9], family="bcnPower"))$result[,1:2]
+```  
+
+Our Box-Cox transformation shows that we shouldn't change Ri, Na, Al, and Si, showing them having a power of 1. Those were also the variables that had relatively normal distributions. The suggestions are to raise the other skewed variables to certain powers.  
+
+#3.2  
+```{r loadSoybean}
+data("Soybean")
+```  
+
+##Part a: Degenerte Distributions  
+```{r 3_2nZV}
+X <- nearZeroVar(Soybean[,2:36], names = TRUE, saveMetrics=T)
+X
+```  
+A variable can classified as degenerate if it's values have zero variance (one value) or near zero variance (small amount of different values). Using the nearZeroVar function we can see which variables have zero or near zero variance.  
+
+```{r 3_2Degenerate}
+subset(X, zeroVar == TRUE | nzv == TRUE)
+```  
+
+Running nearZeroVar shows that none of the variables have zero variance but leaf.mild, mycelium, and scelrotia all have near zero variance.  
+
+##Part b: Pattern of Missing Data  
+
+We are told that 18% of the data is missing and by using the plot_missing function we can see which variables have missing values.  
+
+
 ```{r}
-plot_histogram(Glass)
+plot_missing(Soybean)
+```  
+The plot_missing function shows that only leaves has no missing values and lodging, seed.tmt, server, and hall have the most missing values. Knowing this we can see if there's a pattern with missing data realted to the Class. By grouping by Class using the dplyr library we can see which have the most data missing.  
+
+
+```{r}
+Soybean %>% 
+  gather(Predictor, Value, -Class) %>% 
+  group_by(Class) %>% 
+  summarize(Missing = sum(is.na(Value))) %>% 
+  mutate(Missing = Missing / (nrow(Soybean) * 35)) %>% 
+  arrange(desc(Missing))
+```  
+Looking at missing values by Class, dplyr shows that the phytophthora-rot, 2-4-d-injury, cyst-nematode, diaporthe-pod&stem-blight, and herbicide-injury Classes have missing values.  
+
+##Part c: Handling Missing Data  
+
+Knowing that certain sections of the data contain missing data, we have to deal with them before making any models. Using the mice function R applies Predictive Mean Matching (PMM) to impute missing data. After running PMM on the data we can see that there is no more missing data
+
+```{r}
+Soybean_imputed <- mice(Soybean, method="pmm", printFlag=F, seed=100)
+Soybean_final <- complete(Soybean_imputed)
+plot_missing(Soybean_final)
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
